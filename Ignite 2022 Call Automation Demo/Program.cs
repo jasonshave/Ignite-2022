@@ -45,7 +45,11 @@ app.MapPost("/api/calls/{contextId}", async (
             if (@event.GetType() == typeof(RecognizeCompleted))
             {
                 var recognizeCompleted = @event as RecognizeCompleted;
-                
+                var tone = recognizeCompleted.CollectTonesResult.Tones.FirstOrDefault();
+                if (tone == DtmfTone.One && recognizeCompleted.OperationContext == "OutboundFlightChange")
+                {
+                    // play 
+                }
             }
         }
     }
