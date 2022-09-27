@@ -33,29 +33,50 @@ app.MapPost("/api/calls/{contextId}", async (
     ILogger<Program> logger,
     IConfiguration configuration) =>
 {
-    var mayPhoneNumber = configuration["CustomerPhoneNumber"];
-    try
+    var cloudEvents = await httpRequest.ReadFromJsonAsync<CloudEvent[]>();
+    foreach (var cloudEvent in cloudEvents)
     {
-        var cloudEvents = await httpRequest.ReadFromJsonAsync<CloudEvent[]>();
-        foreach (var cloudEvent in cloudEvents)
+        var @event = CallAutomationEventParser.Parse(cloudEvent);
+        logger.LogInformation($"CorrelationId: {@event.CorrelationId} | CallConnectionId: {@event.CallConnectionId}");
+
+        if (@event is CallConnected)
         {
-            var @event = CallAutomationEventParser.Parse(cloudEvent);
-            logger.LogInformation($"CorrelationId: {@event.CorrelationId} | CallConnectionId: {@event.CallConnectionId}");
+            if (activeCalls.ContainsKey(@event.ServerCallId)) return Results.Ok();
+            activeCalls.Add(@event.ServerCallId, @event.CorrelationId);
 
-            if (@event is CallConnected)
+            await callAutomationClient
+                .GetCallRecording()
+                .StartRecordingAsync(new StartRecordingOptions(new ServerCallLocator(@event.ServerCallId)));
+
+            // top level menu
+            var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(configuration["CustomerPhoneNumber"]), 1)
             {
-                if (activeCalls.ContainsKey(@event.ServerCallId)) return Results.Ok();
+                InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+                InterruptPrompt = true,
+                InterruptCallMediaOperation = true,
+                Prompt = new FileSource(welcomeMessage),
+                OperationContext = "OutboundFlightChange"
+            };
 
-                activeCalls.Add(@event.ServerCallId, @event.CorrelationId);
+            await callAutomationClient
+                .GetCallConnection(@event.CallConnectionId)
+                .GetCallMedia()
+                .StartRecognizingAsync(recognizeOptions);
+        }
 
-                // top level menu
-                var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(mayPhoneNumber), 1)
+        if (@event is RecognizeCompleted recognizeCompleted)
+        {
+            var tone = recognizeCompleted.CollectTonesResult.Tones.FirstOrDefault();
+            if (tone == DtmfTone.One && recognizeCompleted.OperationContext == "OutboundFlightChange")
+            {
+                // 1 = Flight change options
+                var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(configuration["CustomerPhoneNumber"]), 1)
                 {
-                    InitialSilenceTimeout = TimeSpan.FromSeconds(10),
+                    InitialSilenceTimeout = TimeSpan.FromSeconds(2),
                     InterruptPrompt = true,
                     InterruptCallMediaOperation = true,
-                    Prompt = new FileSource(welcomeMessage),
-                    OperationContext = "OutboundFlightChange"
+                    Prompt = new FileSource(optionToChangeEmail),
+                    OperationContext = "AlternateEmailAddress"
                 };
 
                 await callAutomationClient
@@ -63,52 +84,25 @@ app.MapPost("/api/calls/{contextId}", async (
                     .GetCallMedia()
                     .StartRecognizingAsync(recognizeOptions);
             }
+        }
 
-            if (@event is RecognizeCompleted recognizeCompleted)
-            {
-                var tone = recognizeCompleted.CollectTonesResult.Tones.FirstOrDefault();
-                if (tone == DtmfTone.One && recognizeCompleted.OperationContext == "OutboundFlightChange")
-                {
-                    // 1 = Flight change options
-                    var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(mayPhoneNumber), 1)
-                        {
-                            InitialSilenceTimeout = TimeSpan.FromSeconds(2),
-                            InterruptPrompt = true,
-                            InterruptCallMediaOperation = true,
-                            Prompt = new FileSource(optionToChangeEmail),
-                            OperationContext = "AlternateEmailAddress"
-                        };
-
-                    await callAutomationClient
-                        .GetCallConnection(@event.CallConnectionId)
-                        .GetCallMedia()
-                        .StartRecognizingAsync(recognizeOptions);
-                }
-            }
-
-            if (@event is RecognizeFailed recognizeFailed)
-            {
-                if (recognizeFailed.OperationContext == "AlternateEmailAddress" && recognizeFailed.ResultInformation.SubCode is 8510)
-                {
-                    // timeout on choice to change email address
-                    await callAutomationClient
-                        .GetCallConnection(@event.CallConnectionId)
-                        .GetCallMedia()
-                        .PlayToAllAsync(new FileSource(wrapUpWithSurvey));
-                }
-            }
-
-            if (@event is PlayCompleted)
+        if (@event is RecognizeFailed recognizeFailed)
+        {
+            if (recognizeFailed.OperationContext == "AlternateEmailAddress" && recognizeFailed.ResultInformation.SubCode is 8510)
             {
                 await callAutomationClient
                     .GetCallConnection(@event.CallConnectionId)
-                    .HangUpAsync(true);
+                    .GetCallMedia()
+                    .PlayToAllAsync(new FileSource(wrapUpWithSurvey));
             }
         }
-    }
-    catch (InvalidOperationException)
-    {
-        
+
+        if (@event is PlayCompleted)
+        {
+            await callAutomationClient
+                .GetCallConnection(@event.CallConnectionId)
+                .HangUpAsync(true);
+        }
     }
 
     return Results.Ok();
