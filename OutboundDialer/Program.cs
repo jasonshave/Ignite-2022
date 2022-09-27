@@ -1,16 +1,19 @@
 ﻿using Azure.Communication;
 using Azure.Communication.CallingServer;
 
-var callAutomationClient =
-    new CallAutomationClient(
-        "endpoint = https://jassha.communication.azure.com/;accesskey=ZLjtIBwWyDhWRoMguG+YZScz5YugDV7prAwzzi6QyK14YXtOiGqXEM4hgKyyq7Vj2xY8XHURX1q0MWMoNDDJnA==");
+#region Secrets
+var connectionString = "endpoint=https://ignite-2022.communication.azure.com/;accesskey=w1uXtPWsrkselQKpBIQ09avV1U0pig6ff78iCju+rKa032Lc4lAcw/Vgg95q2jjH69x5nZajy0aU4uZh3KHSiA==";
+var callerIdNumber = "+18333245465";
+var targetPhoneNumber = "+17809669598";
+#endregion
 
-var callbackUri = new Uri($"https://e196-75-155-253-232.ngrok.io/api/calls/{Guid.NewGuid()}");
-var source = new CommunicationUserIdentifier("8:acs:eba32226-8a75-47dc-afa3-cbbe8e84bc95_5bb7b304-4582-47d4-a0c1-1f763b4b9ecd");
-var callSource = new CallSource(source)
+var callAutomationClient = new CallAutomationClient(connectionString);
+var callbackUri = new Uri($"https://3ws6tpp5-7154.usw2.rel.tunnels.api.visualstudio.com/api/calls/{Guid.NewGuid()}");
+var sourceUserId = new CommunicationUserIdentifier("8:acs:cb089178-54ed-4d9e-9763-49510601f789_5bb7b304-4582-47d4-a0c1-1f763b4b9ecd");
+var callSource = new CallSource(sourceUserId)
 {
-    CallerId = new PhoneNumberIdentifier("+18336392154")
+    CallerId = new PhoneNumberIdentifier(callerIdNumber)
 };
-var target = new List<CommunicationIdentifier> { new PhoneNumberIdentifier("+17809669598") };
+var target = new List<CommunicationIdentifier> { new PhoneNumberIdentifier(targetPhoneNumber) };
 
 await callAutomationClient.CreateCallAsync(new CreateCallOptions(callSource, target, callbackUri));

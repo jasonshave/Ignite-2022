@@ -1,21 +1,39 @@
 using Azure.Communication;
-using Azure.Communication.CallingServer;
+using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Microsoft.AspNetCore.Mvc;
+
+var welcomeMessage = new Uri("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_FlightOptions.wav");
+var optionToChangeEmail = new Uri("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_OptionalEmailChange.wav");
+var wrapUpWithSurvey = new Uri("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_WrapUpWithSurvey.wav");
+
+var activeCalls = new Dictionary<string, string>();
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton(new CallAutomationClient(builder.Configuration["ConnectionString"]));
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
 
 app.MapPost("/api/calls/{contextId}", async (
     HttpRequest httpRequest,
     [FromRoute] string contextId,
     CallAutomationClient callAutomationClient,
-    ILogger<Program> logger) =>
+    ILogger<Program> logger,
+    IConfiguration configuration) =>
 {
-    var mayPhoneNumber = "+17809669598";
+    var mayPhoneNumber = configuration["CustomerPhoneNumber"];
     try
     {
         var cloudEvents = await httpRequest.ReadFromJsonAsync<CloudEvent[]>();
@@ -24,32 +42,67 @@ app.MapPost("/api/calls/{contextId}", async (
             var @event = CallAutomationEventParser.Parse(cloudEvent);
             logger.LogInformation($"CorrelationId: {@event.CorrelationId} | CallConnectionId: {@event.CallConnectionId}");
 
-            if (@event.GetType() == typeof(CallConnected))
+            if (@event is CallConnected)
             {
-                // invoke recognize api
-                var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(mayPhoneNumber))
+                if (activeCalls.ContainsKey(@event.ServerCallId)) return Results.Ok();
+
+                activeCalls.Add(@event.ServerCallId, @event.CorrelationId);
+
+                // top level menu
+                var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(mayPhoneNumber), 1)
                 {
-                    MaxTonesToCollect = 1,
                     InitialSilenceTimeout = TimeSpan.FromSeconds(10),
-                    InterToneTimeout = TimeSpan.FromSeconds(5),
                     InterruptPrompt = true,
                     InterruptCallMediaOperation = true,
-                    Prompt = new FileSource(new Uri("https://callingstoragequeue.blob.core.windows.net/ivr/contoso-airlines-main-menu.wav")),
-                    OperationContext = "OutboundFlightChange",
-                    StopTones = new [] { DtmfTone.Pound }
+                    Prompt = new FileSource(welcomeMessage),
+                    OperationContext = "OutboundFlightChange"
                 };
 
-                await callAutomationClient.GetCallConnection(@event.CallConnectionId).GetCallMedia().StartRecognizingAsync(recognizeOptions);
+                await callAutomationClient
+                    .GetCallConnection(@event.CallConnectionId)
+                    .GetCallMedia()
+                    .StartRecognizingAsync(recognizeOptions);
             }
 
-            if (@event.GetType() == typeof(RecognizeCompleted))
+            if (@event is RecognizeCompleted recognizeCompleted)
             {
-                var recognizeCompleted = @event as RecognizeCompleted;
                 var tone = recognizeCompleted.CollectTonesResult.Tones.FirstOrDefault();
                 if (tone == DtmfTone.One && recognizeCompleted.OperationContext == "OutboundFlightChange")
                 {
-                    // play 
+                    // 1 = Flight change options
+                    var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(mayPhoneNumber), 1)
+                        {
+                            InitialSilenceTimeout = TimeSpan.FromSeconds(2),
+                            InterruptPrompt = true,
+                            InterruptCallMediaOperation = true,
+                            Prompt = new FileSource(optionToChangeEmail),
+                            OperationContext = "AlternateEmailAddress"
+                        };
+
+                    await callAutomationClient
+                        .GetCallConnection(@event.CallConnectionId)
+                        .GetCallMedia()
+                        .StartRecognizingAsync(recognizeOptions);
                 }
+            }
+
+            if (@event is RecognizeFailed recognizeFailed)
+            {
+                if (recognizeFailed.OperationContext == "AlternateEmailAddress" && recognizeFailed.ResultInformation.SubCode is 8510)
+                {
+                    // timeout on choice to change email address
+                    await callAutomationClient
+                        .GetCallConnection(@event.CallConnectionId)
+                        .GetCallMedia()
+                        .PlayToAllAsync(new FileSource(wrapUpWithSurvey));
+                }
+            }
+
+            if (@event is PlayCompleted)
+            {
+                await callAutomationClient
+                    .GetCallConnection(@event.CallConnectionId)
+                    .HangUpAsync(true);
             }
         }
     }
