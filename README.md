@@ -25,12 +25,12 @@ This project contains the ASP.NET 6 web API project which will receive the Webho
 1. Right-click on the `CallHandler` project in Visual Studio 2022 and choose **Manage User Secrets**.
 2. Enter the following JSON information to configure the application:
 
-  ```JSON
-  {
-      "ConnectionString": "[INSERT_CONNECTION_STRING_HERE]",
-      "CustomerPhoneNumber": "[INSERT_DESTINATION_PSTN_NUMBER_HERE]"
-  }
-  ```
+   ```JSON
+   {
+       "ConnectionString": "[INSERT_CONNECTION_STRING_HERE]",
+       "CustomerPhoneNumber": "[INSERT_DESTINATION_PSTN_NUMBER_HERE]"
+   }
+   ```
 
 ## EnhancedCallHandler project
 
