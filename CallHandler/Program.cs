@@ -27,13 +27,13 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapPost("/api/calls/{contextId}", async (
-    HttpRequest httpRequest,
+    CloudEvent[] cloudEvents,
     [FromRoute] string contextId,
     CallAutomationClient callAutomationClient,
     ILogger<Program> logger,
     IConfiguration configuration) =>
 {
-    var cloudEvents = await httpRequest.ReadFromJsonAsync<CloudEvent[]>();
+
     foreach (var cloudEvent in cloudEvents)
     {
         var @event = CallAutomationEventParser.Parse(cloudEvent);
@@ -43,10 +43,6 @@ app.MapPost("/api/calls/{contextId}", async (
         {
             if (activeCalls.ContainsKey(@event.ServerCallId)) return Results.Ok();
             activeCalls.Add(@event.ServerCallId, @event.CorrelationId);
-
-            await callAutomationClient
-                .GetCallRecording()
-                .StartRecordingAsync(new StartRecordingOptions(new ServerCallLocator(@event.ServerCallId)));
 
             // top level menu
             var recognizeOptions = new CallMediaRecognizeDtmfOptions(new PhoneNumberIdentifier(configuration["CustomerPhoneNumber"]), 1)

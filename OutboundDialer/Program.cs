@@ -1,5 +1,5 @@
 ﻿using Azure.Communication;
-using Azure.Communication.CallingServer;
+using Azure.Communication.CallAutomation;
 
 #region Secrets
 var connectionString = "[INSERT_CONNECTION_STRING_HERE]";
