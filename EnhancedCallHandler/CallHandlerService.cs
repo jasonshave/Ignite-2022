@@ -11,9 +11,9 @@ public class CallHandlerService : BackgroundService
     private readonly IConfiguration _configuration;
     private readonly Dictionary<string, string> _activeCalls = new();
 
-    private readonly Uri _welcomeMessage = new("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_FlightOptions.wav");
-    private readonly Uri _optionToChangeEmail = new("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_OptionalEmailChange.wav");
-    private readonly Uri _wrapUpWithSurvey = new("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_WrapUpWithSurvey.wav");
+    private readonly Uri _welcomeMessage = new("YOUR_WELCOME_FILE");
+    private readonly Uri _optionToChangeEmail = new("YOUR_EMAIL_CHANGE_FILE");
+    private readonly Uri _wrapUpWithSurvey = new("YOUR_WRAP_UP_SURVEY_FILE");
 
     public CallHandlerService(
         ICallAutomationEventSubscriber subscriber,
