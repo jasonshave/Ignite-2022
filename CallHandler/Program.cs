@@ -3,9 +3,9 @@ using Azure.Communication.CallAutomation;
 using Azure.Messaging;
 using Microsoft.AspNetCore.Mvc;
 
-var welcomeMessage = new Uri("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_FlightOptions.wav");
-var optionToChangeEmail = new Uri("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_OptionalEmailChange.wav");
-var wrapUpWithSurvey = new Uri("https://ignite2022storage.blob.core.windows.net/ivr/AdatumAirlines_KAI_WrapUpWithSurvey.wav");
+Uri _welcomeMessage = new("YOUR_WELCOME_FILE");
+Uri _optionToChangeEmail = new("YOUR_EMAIL_CHANGE_FILE");
+Uri _wrapUpWithSurvey = new("YOUR_WRAP_UP_SURVEY_FILE");
 
 var activeCalls = new Dictionary<string, string>();
 
@@ -50,7 +50,7 @@ app.MapPost("/api/calls/{contextId}", async (
                 InitialSilenceTimeout = TimeSpan.FromSeconds(10),
                 InterruptPrompt = true,
                 InterruptCallMediaOperation = true,
-                Prompt = new FileSource(welcomeMessage),
+                Prompt = new FileSource(_welcomeMessage),
                 OperationContext = "OutboundFlightChange"
             };
 
@@ -71,7 +71,7 @@ app.MapPost("/api/calls/{contextId}", async (
                     InitialSilenceTimeout = TimeSpan.FromSeconds(2),
                     InterruptPrompt = true,
                     InterruptCallMediaOperation = true,
-                    Prompt = new FileSource(optionToChangeEmail),
+                    Prompt = new FileSource(_optionToChangeEmail),
                     OperationContext = "AlternateEmailAddress"
                 };
 
@@ -89,7 +89,7 @@ app.MapPost("/api/calls/{contextId}", async (
                 await callAutomationClient
                     .GetCallConnection(@event.CallConnectionId)
                     .GetCallMedia()
-                    .PlayToAllAsync(new FileSource(wrapUpWithSurvey));
+                    .PlayToAllAsync(new FileSource(_wrapUpWithSurvey));
             }
         }
 
