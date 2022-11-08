@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CallHandler", "CallHandler\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OutboundDialer", "OutboundDialer\OutboundDialer.csproj", "{CEB13A84-334D-4EF6-BAE3-57C096494F68}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EnhancedCallHandler", "EnhancedCallHandler\EnhancedCallHandler.csproj", "{B886413D-D922-4FE5-9559-11928A3EF066}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -23,10 +21,6 @@ Global
 		{CEB13A84-334D-4EF6-BAE3-57C096494F68}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CEB13A84-334D-4EF6-BAE3-57C096494F68}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CEB13A84-334D-4EF6-BAE3-57C096494F68}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B886413D-D922-4FE5-9559-11928A3EF066}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B886413D-D922-4FE5-9559-11928A3EF066}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B886413D-D922-4FE5-9559-11928A3EF066}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B886413D-D922-4FE5-9559-11928A3EF066}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
